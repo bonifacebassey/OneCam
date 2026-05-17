@@ -34,9 +34,7 @@ class CameraStreamer:
         q: asyncio.Queue = asyncio.Queue(maxsize=maxsize)
         self._subscribers.add(q)
         if self._task is None or self._task.done():
-            self._task = asyncio.create_task(
-                self._run(), name=f"streamer-{self.camera.id}"
-            )
+            self._task = asyncio.create_task(self._run(), name=f"streamer-{self.camera.id}")
         return q
 
     def unsubscribe(self, q: asyncio.Queue) -> None:
@@ -58,7 +56,10 @@ class CameraStreamer:
             except Exception as exc:
                 logger.warning(
                     "Stream lost for %s — %s: %s — retrying in %.0fs",
-                    self.camera.id, type(exc).__name__, exc, delay,
+                    self.camera.id,
+                    type(exc).__name__,
+                    exc,
+                    delay,
                 )
             if self._subscribers:
                 await asyncio.sleep(delay)
@@ -70,9 +71,7 @@ class CameraStreamer:
         # read timeout must be None — MJPEG streams pause between frames and a
         # finite read timeout causes spurious disconnects every ~proxy_timeout seconds.
         timeout = httpx.Timeout(connect=settings.proxy_timeout, read=None, write=None, pool=None)
-        async with self._client.stream(
-            "GET", self.camera.stream_url, timeout=timeout
-        ) as resp:
+        async with self._client.stream("GET", self.camera.stream_url, timeout=timeout) as resp:
             async for chunk in resp.aiter_bytes(chunk_size=settings.stream_chunk_size):
                 buf += chunk  # in-place extend — no copy of existing data
                 self._parse_and_broadcast(buf)

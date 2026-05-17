@@ -176,6 +176,16 @@ OneCam/
 ## Development
 
 ```bash
+make install   # install dependencies
+make run       # start server with live reload
+make test      # run tests
+make check     # lint + tests (CI gate)
+make           # show all available targets
+```
+
+Or directly:
+
+```bash
 # Run with auto-reload
 uv run uvicorn main:app --host 0.0.0.0 --reload --port 8000
 

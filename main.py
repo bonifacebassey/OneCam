@@ -28,12 +28,11 @@ async def lifespan(app: FastAPI):
     Path(settings.snapshots_dir).mkdir(exist_ok=True)
 
     app.state.cameras = load_cameras(settings.cameras_file)
-    app.state.api_client = httpx.AsyncClient()      # snapshots, controls
-    stream_client = httpx.AsyncClient()             # broadcaster uses this internally
+    app.state.api_client = httpx.AsyncClient()  # snapshots, controls
+    stream_client = httpx.AsyncClient()  # broadcaster uses this internally
 
     app.state.streamers = {
-        cam_id: CameraStreamer(cam, stream_client)
-        for cam_id, cam in app.state.cameras.items()
+        cam_id: CameraStreamer(cam, stream_client) for cam_id, cam in app.state.cameras.items()
     }
     app.state.sse_subscribers: set[asyncio.Queue] = set()
 
