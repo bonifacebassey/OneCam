@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OneCam</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header>
+  <h1>OneCam</h1>
+  <div id="conn-status">
+    <span class="dot"></span>
+    <span id="conn-label">Connecting…</span>
+  </div>
+</header>
+
+<div id="grid"></div>
+<div id="empty">No cameras configured. Edit <code>cameras.json</code> and restart the server.</div>
+<div id="alert-bar"></div>
+
+<script>
+"use strict";
+
+// ── Boot ────────────────────────────────────────────────────────────────────
+async function init() {
+  const res = await fetch("/api/cameras");
+  const cameras = await res.json();
+
+  const grid = document.getElementById("grid");
+  const empty = document.getElementById("empty");
+
+  if (cameras.length === 0) {
+    empty.style.display = "block";
+    return;
+  }
+
+  cameras.forEach(cam => grid.appendChild(buildCard(cam)));
+  connectSSE();
+}
+
+// ── Card Builder ─────────────────────────────────────────────────────────────
+function buildCard(cam) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.id = `card-${cam.id}`;
+
+  card.innerHTML = `
+    <div class="card-header">
+      <span class="card-label">${cam.label}</span>
+      <span class="cam-status live" id="status-${cam.id}">Live</span>
+    </div>
+
+    <div class="stream-wrap">
+      <img class="stream" id="img-${cam.id}"
+           src="${cam.stream_url}"
+           data-stream-url="${cam.stream_url}"
+           alt="${cam.label}" />
+      <div class="offline-overlay" id="offline-${cam.id}">
+        <span>Camera Offline</span>
+        <button onclick="retryStream('${cam.id}')">Retry</button>
+      </div>
+      <div class="motion-badge" id="badge-${cam.id}">Motion</div>
+    </div>
+
+    <div class="card-footer">
+      <button onclick="takeSnapshot('${cam.id}')">Snapshot</button>
+      <button onclick="toggleControls('${cam.id}')">Controls</button>
+    </div>
+
+    <div class="controls" id="controls-${cam.id}">
+      <div class="ctrl-row">
+        <label>Resolution</label>
+        <select onchange="sendControl('${cam.id}', 'framesize', +this.value)">
+          <option value="5">QVGA 320×240</option>
+          <option value="8" selected>VGA 640×480</option>
+          <option value="9">SVGA 800×600</option>
+          <option value="10">XGA 1024×768</option>
+          <option value="13">UXGA 1600×1200</option>
+        </select>
+      </div>
+      <div class="ctrl-row">
+        <label>JPEG Quality</label>
+        <input type="range" min="4" max="63" value="12"
+               oninput="sendControl('${cam.id}', 'quality', +this.value)" />
+      </div>
+      <div class="ctrl-row">
+        <label>Brightness</label>
+        <input type="range" min="-2" max="2" value="0" step="1"
+               oninput="sendControl('${cam.id}', 'brightness', +this.value)" />
+      </div>
+      <div class="ctrl-row">
+        <label>Contrast</label>
+        <input type="range" min="-2" max="2" value="0" step="1"
+               oninput="sendControl('${cam.id}', 'contrast', +this.value)" />
+      </div>
+    </div>
+  `;
+
+  const img = card.querySelector("img");
+  img.addEventListener("error", () => markOffline(cam.id));
+  img.addEventListener("load", () => markLive(cam.id));
+
+  return card;
+}
+
+// ── Stream State ──────────────────────────────────────────────────────────────
+const retryTimers = {};
+const RETRY_INTERVAL = 5000; // ms between auto-retry attempts
+
+function markOffline(camId) {
+  document.getElementById(`offline-${camId}`).classList.add("visible");
+  const st = document.getElementById(`status-${camId}`);
+  st.textContent = "Offline";
+  st.className = "cam-status offline";
+  scheduleRetry(camId);
+}
+
+function markLive(camId) {
+  document.getElementById(`offline-${camId}`).classList.remove("visible");
+  const st = document.getElementById(`status-${camId}`);
+  st.textContent = "Live";
+  st.className = "cam-status live";
+  clearRetry(camId);
+}
+
+function scheduleRetry(camId) {
+  if (retryTimers[camId]) return; // already scheduled
+  retryTimers[camId] = setInterval(() => {
+    const img = document.getElementById(`img-${camId}`);
+    if (!img) { clearRetry(camId); return; }
+    const base = img.dataset.streamUrl;
+    img.src = `${base}?t=${Date.now()}`; // cache-bust to force reconnect
+  }, RETRY_INTERVAL);
+}
+
+function clearRetry(camId) {
+  clearInterval(retryTimers[camId]);
+  delete retryTimers[camId];
+}
+
+function retryStream(camId) {
+  clearRetry(camId); // reset timer so next attempt starts fresh
+  const img = document.getElementById(`img-${camId}`);
+  img.src = `${img.dataset.streamUrl}?t=${Date.now()}`;
+}
+
+// ── Snapshot ──────────────────────────────────────────────────────────────────
+function takeSnapshot(camId) {
+  window.open(`/api/snapshot/${camId}?save=true`, "_blank");
+}
+
+// ── Controls Panel ────────────────────────────────────────────────────────────
+function toggleControls(camId) {
+  document.getElementById(`controls-${camId}`).classList.toggle("open");
+}
+
+async function sendControl(camId, variable, value) {
+  try {
+    await fetch(`/api/cameras/${camId}/control`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ variable, value }),
+    });
+  } catch (e) {
+    console.warn("Control failed:", e);
+  }
+}
+
+// ── SSE Events ────────────────────────────────────────────────────────────────
+function connectSSE() {
+  const statusEl = document.getElementById("conn-status");
+  const labelEl  = document.getElementById("conn-label");
+
+  const es = new EventSource("/api/events");
+
+  es.addEventListener("open", () => {
+    statusEl.className = "connected";
+    labelEl.textContent = "Live";
+  });
+
+  es.addEventListener("motion", e => {
+    const data = JSON.parse(e.data);
+    showMotionAlert(data);
+  });
+
+  es.addEventListener("error", () => {
+    statusEl.className = "disconnected";
+    labelEl.textContent = "Reconnecting…";
+    // EventSource reconnects automatically
+  });
+}
+
+function showMotionAlert(data) {
+  // Flash camera card border
+  const card = document.getElementById(`card-${data.camera_id}`);
+  const badge = document.getElementById(`badge-${data.camera_id}`);
+  if (card) card.classList.add("motion-active");
+  if (badge) badge.style.display = "block";
+
+  setTimeout(() => {
+    if (card)  card.classList.remove("motion-active");
+    if (badge) badge.style.display = "none";
+  }, 6000);
+
+  // Toast alert
+  const bar = document.getElementById("alert-bar");
+  const toast = document.createElement("div");
+  toast.className = "alert";
+  const time = data.timestamp.replace(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/, "$3/$2/$1 $4:$5:$6");
+  toast.innerHTML = `
+    <span><strong>${data.label}</strong><br /><small>${time}</small></span>
+    <a href="/api/snapshots/${data.snapshot_file}" target="_blank">View</a>
+  `;
+  bar.prepend(toast);
+  setTimeout(() => toast.remove(), 12000);
+}
+
+init();
+</script>
+</body>
+</html>

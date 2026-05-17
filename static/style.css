@@ -1,0 +1,253 @@
+:root {
+  --bg: #111;
+  --surface: #1e1e1e;
+  --surface2: #282828;
+  --border: #333;
+  --accent: #e74c3c;
+  --text: #eee;
+  --muted: #888;
+  --green: #2ecc71;
+  --yellow: #f39c12;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+header h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+#conn-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+#conn-status .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+#conn-status.connected .dot  { background: var(--green); }
+#conn-status.connected       { color: var(--green); }
+#conn-status.disconnected .dot { background: var(--accent); }
+#conn-status.disconnected    { color: var(--accent); }
+
+/* ── Camera Grid ─────────────────────────────────────────────────────────── */
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.card.motion-active { border-color: var(--accent); }
+
+/* ── Card Header ─────────────────────────────────────────────────────────── */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.9rem;
+}
+
+.card-label { font-size: 0.9rem; font-weight: 500; }
+
+.cam-status {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--muted);
+}
+
+.cam-status.live  { color: var(--green); }
+.cam-status.offline { color: var(--accent); }
+
+/* ── Stream Area ─────────────────────────────────────────────────────────── */
+.stream-wrap {
+  position: relative;
+  background: #000;
+  aspect-ratio: 4 / 3;
+}
+
+.stream {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.offline-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.offline-overlay.visible { display: flex; }
+
+.motion-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.2rem 0.6rem;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  animation: pulse 0.9s infinite;
+  display: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ── Card Footer ─────────────────────────────────────────────────────────── */
+.card-footer {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Controls Panel ─────────────────────────────────────────────────────── */
+.controls {
+  border-top: 1px solid var(--border);
+  padding: 0.75rem 0.9rem;
+  display: none;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.controls.open { display: flex; }
+
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ctrl-row label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 90px;
+}
+
+.ctrl-row select,
+.ctrl-row input[type="range"] {
+  flex: 1;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+button {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.75rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: background 0.15s;
+}
+
+button:hover { background: #383838; }
+
+select, input[type="range"] {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+/* ── Alert Bar ───────────────────────────────────────────────────────────── */
+#alert-bar {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 200;
+}
+
+.alert {
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  border-radius: 5px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.alert a { color: var(--accent); text-decoration: none; margin-left: 0.5rem; }
+.alert a:hover { text-decoration: underline; }
+
+/* ── Empty State ─────────────────────────────────────────────────────────── */
+#empty {
+  display: none;
+  padding: 4rem 1rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 520px) {
+  #grid { grid-template-columns: 1fr; padding: 0.5rem; }
+}

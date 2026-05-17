@@ -1,0 +1,18 @@
+{
+  "cameras": [
+    {
+      "id": "front-door",
+      "label": "Front Door",
+      "ip": "192.168.x.x",
+      "stream_port": 81,
+      "enabled": true
+    },
+    {
+      "id": "back-door",
+      "label": "Back Door",
+      "ip": "192.168.x.x",
+      "stream_port": 81,
+      "enabled": true
+    }
+  ]
+}
