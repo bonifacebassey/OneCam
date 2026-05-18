@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OneCam Admin</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, var(--surface) 100%);
+      border-bottom: 1px solid #2a2a4a;
+      padding: 0.85rem 1.5rem;
+    }
+    html.light header { background: linear-gradient(135deg, #e8eaf6 0%, var(--surface) 100%); border-color: #c5c9e0; }
+    header h1 {
+      font-size: 1.15rem; font-weight: 700; letter-spacing: 0.06em;
+      background: linear-gradient(90deg, #fff 0%, #aab4cc 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    html.light header h1 { background: linear-gradient(90deg, #1a1a2e 0%, #4a5080 100%); -webkit-background-clip: text; background-clip: text; }
+
+    .nav-link {
+      font-size: 0.8rem; color: var(--muted); text-decoration: none;
+      padding: 0.3rem 0.7rem; border: 1px solid var(--border); border-radius: 5px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .nav-link:hover { color: var(--text); border-color: #555; }
+
+    .theme-btn {
+      background: none; border: 1px solid var(--border); border-radius: 5px;
+      padding: 0.25rem 0.5rem; cursor: pointer; font-size: 1rem; line-height: 1;
+      color: var(--muted); transition: border-color 0.15s;
+    }
+    .theme-btn:hover { border-color: #555; background: none; }
+
+    main { flex: 1; padding: 1.25rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+    /* ── Panels ──────────────────────────────────────────────────────────────── */
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.1rem; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .panel-header.collapsible { cursor: pointer; }
+    .panel-header.collapsible:hover { background: rgba(255,255,255,0.04); }
+    .panel-title {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted);
+      display: flex; align-items: center; gap: 0.45rem;
+    }
+    .panel-title svg { opacity: 0.6; }
+    .panel-body { padding: 1rem 1.1rem; }
+    .chevron { font-size: 0.7rem; color: var(--muted); }
+
+    /* ── Metric tiles ────────────────────────────────────────────────────────── */
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
+    .metric-tile {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 0.9rem 1rem; position: relative; overflow: hidden; transition: border-color 0.2s;
+    }
+    .metric-tile::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .metric-tile .icon { font-size: 1.1rem; margin-bottom: 0.5rem; display: block; opacity: 0.7; }
+    .metric-tile .label { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.3rem; letter-spacing: 0.04em; }
+    .metric-tile .value { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+    .metric-tile .sub { font-size: 0.7rem; color: var(--muted); margin-top: 0.3rem; }
+    .metric-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 0.55rem; overflow: hidden; }
+    .metric-bar-fill { height: 100%; border-radius: 2px; background: var(--green); transition: width 0.6s ease, background 0.4s; }
+    .metric-bar-fill.warn { background: var(--yellow); }
+    .metric-bar-fill.crit { background: var(--accent); }
+    .metric-tile.crit  { border-left: 2px solid var(--accent); }
+    .metric-tile.warn  { border-left: 2px solid var(--yellow); }
+    .metric-tile.ok    { border-left: 2px solid var(--green); }
+
+    /* Storage warning */
+    .storage-warning {
+      display: none; margin-top: 0.75rem;
+      background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.4);
+      border-radius: 8px; padding: 0.6rem 1rem;
+      font-size: 0.82rem; color: var(--accent);
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .storage-warning.hidden { display: none !important; }
+
+    /* ── Camera cards ────────────────────────────────────────────────────────── */
+    .cam-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.85rem; }
+    .cam-card {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden; transition: border-color 0.2s, transform 0.15s;
+    }
+    .cam-card:hover { transform: translateY(-1px); }
+    .cam-card.online  { border-left: 3px solid var(--green); }
+    .cam-card.offline { border-left: 3px solid var(--accent); }
+    .cam-card-header {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .status-ring {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+      background: var(--muted); transition: background 0.3s;
+    }
+    .status-ring.online  { background: var(--green); box-shadow: 0 0 0 3px rgba(46,204,113,0.15); }
+    .status-ring.offline { background: var(--accent); box-shadow: 0 0 0 3px rgba(231,76,60,0.15); }
+    .cam-name { font-weight: 600; font-size: 0.88rem; flex: 1; }
+    .cam-badge { font-size: 0.65rem; padding: 0.12rem 0.45rem; border-radius: 10px; font-weight: 600; letter-spacing: 0.04em; }
+    .cam-badge.online  { background: rgba(46,204,113,0.15); color: var(--green); }
+    .cam-badge.offline { background: rgba(231,76,60,0.15);  color: var(--accent); }
+
+    /* Camera preview thumbnail */
+    .cam-preview {
+      width: 100%; aspect-ratio: 4/3; object-fit: cover;
+      display: block; background: #000;
+      border-bottom: 1px solid var(--border);
+    }
+    .cam-preview-placeholder {
+      width: 100%; aspect-ratio: 4/3; background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 0.78rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cam-body { padding: 0.75rem 0.9rem; }
+    .cam-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 0.75rem; font-size: 0.78rem; margin-bottom: 0.75rem; }
+    .cam-stat-label { color: var(--muted); }
+    .cam-stat-value { color: var(--text); font-variant-numeric: tabular-nums; }
+
+    /* ── Snapshots ───────────────────────────────────────────────────────────── */
+    .snap-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.85rem; }
+    .snap-toolbar select { width: auto; }
+    .snap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.6rem; }
+    .snap-item { position: relative; aspect-ratio: 4/3; border-radius: 7px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; background: var(--surface2); }
+    .snap-item img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.2s; }
+    .snap-item:hover img { transform: scale(1.04); }
+    .snap-item-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%); opacity: 0; transition: opacity 0.2s; display: flex; flex-direction: column; justify-content: flex-end; padding: 0.4rem 0.5rem; }
+    .snap-item:hover .snap-item-overlay { opacity: 1; }
+    .snap-item-ts  { font-size: 0.65rem; color: #ddd; }
+    .snap-item-cam { font-size: 0.6rem;  color: var(--muted); }
+    .snap-empty { color: var(--muted); font-size: 0.85rem; padding: 2rem 0; text-align: center; }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────────── */
+    .btn-danger { background: rgba(231,76,60,0.1); border-color: rgba(231,76,60,0.4); color: var(--accent); }
+    .btn-danger:hover { background: rgba(231,76,60,0.2); border-color: var(--accent); }
+
+    /* ── Footer ──────────────────────────────────────────────────────────────── */
+    .admin-footer {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem;
+    }
+    .btn-restart { background: rgba(231,76,60,0.12); border: 1px solid rgba(231,76,60,0.5); color: var(--accent); font-weight: 600; padding: 0.45rem 1rem; }
+    .btn-restart:hover { background: rgba(231,76,60,0.22); border-color: var(--accent); }
+
+    /* ── Banner ──────────────────────────────────────────────────────────────── */
+    #banner { display: none; position: fixed; top: 0; left: 0; right: 0; padding: 0.65rem 1rem; text-align: center; font-size: 0.85rem; font-weight: 500; z-index: 999; animation: slideDown 0.2s ease; }
+    @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    #banner.info  { background: #1a2a1a; border-bottom: 2px solid var(--green); color: var(--green); }
+    #banner.error { background: #2a1a1a; border-bottom: 2px solid var(--accent); color: var(--accent); }
+    #banner.visible { display: block; }
+
+    /* ── Misc ────────────────────────────────────────────────────────────────── */
+    .last-updated { font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .last-updated.stale { color: var(--yellow); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.25s ease; }
+
+    @media (max-width: 600px) {
+      main { padding: 0.75rem; gap: 1rem; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .cam-cards { grid-template-columns: 1fr; }
+      .slider-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="banner"></div>
+
+<header>
+  <h1>OneCam Admin</h1>
+  <div style="display:flex;align-items:center;gap:2rem;">
+    <span id="uptime" style="font-size:0.78rem;color:var(--muted);font-variant-numeric:tabular-nums;"></span>
+    <button class="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
+    <a class="nav-link" href="/ui/">← Dashboard</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- System -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        System
+      </span>
+      <span class="last-updated" id="system-updated"></span>
+    </div>
+    <div class="panel-body">
+      <div class="metrics-grid">
+        <div class="metric-tile" id="tile-cpu">
+          <span class="icon">⚙️</span>
+          <div class="label">CPU Usage</div>
+          <div class="value" id="m-cpu">—</div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="bar-cpu" style="width:0%"></div></div>
+        </div>
+        <div class="metric-tile" id="tile-temp">
+          <span class="icon">🌡️</span>
+          <div class="label">CPU Temp</div>
+          <div class="value" id="m-temp">—</div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="bar-temp" style="width:0%"></div></div>
+        </div>
+        <div class="metric-tile" id="tile-ram">
+          <span class="icon">🧠</span>
+          <div class="label">RAM</div>
+          <div class="value" id="m-ram">—</div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="bar-ram" style="width:0%"></div></div>
+          <div class="sub" id="m-ram-sub"></div>
+        </div>
+        <div class="metric-tile" id="tile-disk">
+          <span class="icon">💾</span>
+          <div class="label">Disk</div>
+          <div class="value" id="m-disk">—</div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="bar-disk" style="width:0%"></div></div>
+          <div class="sub" id="m-disk-sub"></div>
+        </div>
+        <div class="metric-tile ok" id="tile-snaps">
+          <span class="icon">📸</span>
+          <div class="label">Snapshots</div>
+          <div class="value" id="m-snaps">—</div>
+          <div class="sub" id="m-snaps-sub"></div>
+        </div>
+        <div class="metric-tile" id="tile-load">
+          <span class="icon">📊</span>
+          <div class="label">Load (1m)</div>
+          <div class="value" id="m-load">—</div>
+        </div>
+      </div>
+      <div class="storage-warning hidden" id="storage-warning">
+        ⚠️ <span id="storage-warning-msg"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cameras -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Cameras
+      </span>
+      <span class="last-updated" id="cameras-updated"></span>
+    </div>
+    <div class="panel-body">
+      <div class="cam-cards" id="cam-cards">
+        <div style="color:var(--muted);font-size:0.85rem;">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Snapshots -->
+  <div class="panel">
+    <div class="panel-header collapsible" onclick="togglePanel('snap')">
+      <span class="panel-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Snapshots
+      </span>
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <span id="snap-count-header" style="font-size:0.72rem;color:var(--muted)"></span>
+        <span class="chevron" id="snap-chevron">▼</span>
+      </div>
+    </div>
+    <div id="snap-body" class="panel-body" style="display:none;">
+      <div class="snap-toolbar">
+        <select id="snap-filter"><option value="">All cameras</option></select>
+        <select id="snap-limit">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="200">200</option>
+        </select>
+        <button onclick="deleteSnapshots(null, 7)">Delete &gt; 7 days</button>
+        <button class="btn-danger" onclick="deleteSnapshots()">Delete all</button>
+      </div>
+      <div class="snap-grid" id="snap-grid"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="admin-footer">
+    <button class="btn-restart" onclick="restartServer()">⟳ Restart Server</button>
+    <span id="restart-status"></span>
+    <span style="margin-left:auto;font-size:0.75rem;color:var(--muted)">Requires systemd <code>Restart=always</code> or <code>--reload</code></span>
+  </div>
+
+</main>
+
+<script>
+  // ── Theme ────────────────────────────────────────────────────────────────────
+  const _theme = localStorage.getItem('admin-theme') || 'dark';
+  if (_theme === 'light') document.documentElement.classList.add('light');
+  document.querySelector('.theme-btn').textContent = _theme === 'light' ? '🌙' : '☀️';
+
+  function toggleTheme() {
+    const isLight = document.documentElement.classList.toggle('light');
+    localStorage.setItem('admin-theme', isLight ? 'light' : 'dark');
+    document.querySelector('.theme-btn').textContent = isLight ? '🌙' : '☀️';
+  }
+
+  // ── Last-updated tracker ─────────────────────────────────────────────────────
+  const _lastUpdated = {};
+  function markUpdated(id) { _lastUpdated[id] = Date.now(); }
+  function tickUpdated() {
+    for (const [id, ts] of Object.entries(_lastUpdated)) {
+      const el = document.getElementById(id + '-updated');
+      if (!el) continue;
+      const secs = Math.floor((Date.now() - ts) / 1000);
+      el.textContent = secs < 5 ? 'just now' : secs < 60 ? `${secs}s ago` : `${Math.floor(secs/60)}m ago`;
+      el.className = 'last-updated' + (secs > 45 ? ' stale' : '');
+    }
+  }
+  setInterval(tickUpdated, 1000);
+
+  // ── Panel collapse ───────────────────────────────────────────────────────────
+  function togglePanel(id) {
+    const body    = document.getElementById(id + '-body');
+    const chevron = document.getElementById(id + '-chevron');
+    const open = body.style.display === 'none';
+    body.style.display = open ? '' : 'none';
+    chevron.textContent = open ? '▲' : '▼';
+  }
+
+  // ── Metric helpers ───────────────────────────────────────────────────────────
+  function setMetric(id, barId, tileId, value, warnAt, critAt, unit = '%') {
+    document.getElementById(id).textContent = value + unit;
+    const bar = document.getElementById(barId), tile = document.getElementById(tileId);
+    bar.style.width = Math.min(value, 100) + '%';
+    const cls = value >= critAt ? 'crit' : value >= warnAt ? 'warn' : '';
+    bar.className = 'metric-bar-fill' + (cls ? ' ' + cls : '');
+    tile.className = 'metric-tile' + (cls ? ' ' + cls : ' ok');
+  }
+
+  // ── System ───────────────────────────────────────────────────────────────────
+  async function loadSystem() {
+    try {
+      const d = await fetch('/api/admin/system').then(r => r.json());
+      setMetric('m-cpu',  'bar-cpu',  'tile-cpu',  d.cpu_percent,  60, 85);
+      setMetric('m-temp', 'bar-temp', 'tile-temp', d.cpu_temp_c ?? 0, 65, 80, d.cpu_temp_c != null ? '°C' : '');
+      if (d.cpu_temp_c == null) document.getElementById('m-temp').textContent = 'N/A';
+      setMetric('m-ram',  'bar-ram',  'tile-ram',  d.ram_percent,  70, 90);
+      document.getElementById('m-ram-sub').textContent = `${d.ram_used_mb} / ${d.ram_total_mb} MB`;
+      setMetric('m-disk', 'bar-disk', 'tile-disk', d.disk_percent, 75, 90);
+      document.getElementById('m-disk-sub').textContent = `${d.disk_used_gb} / ${d.disk_total_gb} GB`;
+      document.getElementById('m-snaps').textContent    = d.snapshots_count;
+      document.getElementById('m-snaps-sub').textContent = d.snapshots_size_mb + ' MB';
+      document.getElementById('m-load').textContent     = d.load_avg_1m;
+
+      const h = Math.floor(d.uptime_seconds / 3600);
+      const m = Math.floor((d.uptime_seconds % 3600) / 60);
+      document.getElementById('uptime').textContent = `up ${h}h ${m}m`;
+
+      // Storage warning
+      const warn = document.getElementById('storage-warning');
+      const msgs = [];
+      if (d.disk_percent >= 85) msgs.push(`Disk at ${d.disk_percent}% — consider freeing space`);
+      if (d.snapshots_size_mb >= 500) msgs.push(`Snapshots using ${d.snapshots_size_mb} MB`);
+      if (msgs.length) {
+        document.getElementById('storage-warning-msg').textContent = msgs.join(' · ');
+        warn.classList.remove('hidden');
+      } else {
+        warn.classList.add('hidden');
+      }
+      markUpdated('system');
+    } catch {}
+  }
+
+  // ── Cameras ──────────────────────────────────────────────────────────────────
+  async function loadCameras() {
+    try {
+      const cams = await fetch('/api/admin/cameras/status').then(r => r.json());
+      const sel = document.getElementById('snap-filter');
+      const existing = new Set([...sel.options].map(o => o.value).filter(Boolean));
+      cams.forEach(c => {
+        if (!existing.has(c.id)) {
+          const o = document.createElement('option');
+          o.value = c.id; o.textContent = c.label; sel.appendChild(o);
+        }
+      });
+      markUpdated('cameras');
+      document.getElementById('cam-cards').innerHTML = cams.map(c => {
+        const cls  = c.reachable ? 'online' : 'offline';
+        const lat  = c.latency_ms != null ? c.latency_ms + ' ms' : '—';
+        const last = c.motion_last_at ? formatTs(c.motion_last_at) : 'Never';
+        const preview = c.reachable
+          ? `<img class="cam-preview" src="/api/snapshot/${c.id}?t=${Date.now()}" alt="Preview" onerror="this.outerHTML='<div class=cam-preview-placeholder>No preview</div>'">`
+          : `<div class="cam-preview-placeholder">Offline</div>`;
+        return `
+          <div class="cam-card ${cls} fade-in">
+            <div class="cam-card-header">
+              <span class="status-ring ${cls}"></span>
+              <span class="cam-name">${c.label}</span>
+              <span class="cam-badge ${cls}">${c.reachable ? 'Online' : 'Offline'}</span>
+            </div>
+            ${preview}
+            <div class="cam-body">
+              <div class="cam-stats">
+                <span class="cam-stat-label">IP</span>         <span class="cam-stat-value">${c.ip}</span>
+                <span class="cam-stat-label">Latency</span>    <span class="cam-stat-value">${lat}</span>
+                <span class="cam-stat-label">Viewers</span>    <span class="cam-stat-value">${c.subscribers}</span>
+                <span class="cam-stat-label">Motion events</span> <span class="cam-stat-value">${c.motion_events_total}</span>
+                <span class="cam-stat-label">Last motion</span><span class="cam-stat-value">${last}</span>
+              </div>
+              <button onclick="pingCamera('${c.id}', this)">Ping</button>
+            </div>
+          </div>`;
+      }).join('');
+    } catch {}
+  }
+
+  // ── Snapshots ────────────────────────────────────────────────────────────────
+  async function loadSnapshots() {
+    const camId = document.getElementById('snap-filter').value;
+    const limit = document.getElementById('snap-limit').value;
+    const params = new URLSearchParams({ limit });
+    if (camId) params.set('camera_id', camId);
+    try {
+      const d = await fetch('/api/admin/snapshots?' + params).then(r => r.json());
+      document.getElementById('snap-count-header').textContent = `${d.total} files · ${d.size_mb} MB`;
+      const grid = document.getElementById('snap-grid');
+      if (!d.files.length) { grid.innerHTML = '<div class="snap-empty">No snapshots yet</div>'; return; }
+      grid.innerHTML = d.files.map(f => `
+        <div class="snap-item fade-in" onclick="window.open('${f.url}','_blank')">
+          <img src="${f.url}" loading="lazy" alt="${f.filename}" />
+          <div class="snap-item-overlay">
+            <div class="snap-item-ts">${f.timestamp ? formatTs(f.timestamp) : ''}</div>
+            <div class="snap-item-cam">${f.camera_id || ''}</div>
+          </div>
+        </div>`).join('');
+    } catch {}
+  }
+
+  // ── Actions ──────────────────────────────────────────────────────────────────
+  async function pingCamera(camId, btn) {
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const cams = await fetch('/api/admin/cameras/status').then(r => r.json());
+      const cam = cams.find(c => c.id === camId);
+      btn.textContent = cam?.reachable ? `${cam.latency_ms} ms ✓` : 'Offline';
+    } catch { btn.textContent = 'Error'; }
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'Ping'; }, 3000);
+  }
+
+  async function deleteSnapshots(camId = null, olderThanDays = null) {
+    const msg = olderThanDays ? `Delete snapshots older than ${olderThanDays} days?`
+      : camId ? `Delete all snapshots for "${camId}"?` : 'Delete ALL snapshots? This cannot be undone.';
+    if (!confirm(msg)) return;
+    const params = new URLSearchParams();
+    if (camId) params.set('camera_id', camId);
+    if (olderThanDays) params.set('older_than_days', olderThanDays);
+    const r = await fetch('/api/admin/snapshots?' + params, { method: 'DELETE' });
+    const d = await r.json();
+    showBanner(`Deleted ${d.deleted} snapshot(s)`, 'info');
+    loadSnapshots(); loadSystem();
+  }
+
+  async function restartServer() {
+    if (!confirm('Restart the OneCam server?\n\nRequires systemd Restart=always or --reload to auto-recover.')) return;
+    document.getElementById('restart-status').textContent = 'Restarting…';
+    try { await fetch('/api/admin/restart', { method: 'POST' }); } catch {}
+    showBanner('Restarting — waiting for server…', 'info');
+    const poll = setInterval(async () => {
+      try {
+        if ((await fetch('/health')).ok) {
+          clearInterval(poll);
+          document.getElementById('restart-status').textContent = '';
+          showBanner('Server is back online ✓', 'info');
+          setTimeout(hideBanner, 4000);
+          loadSystem(); loadCameras();
+        }
+      } catch {}
+    }, 2000);
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function formatTs(ts) {
+    if (!ts || ts.length < 15) return ts;
+    return `${ts.slice(6,8)}/${ts.slice(4,6)}/${ts.slice(0,4)} ${ts.slice(9,11)}:${ts.slice(11,13)}`;
+  }
+
+  function showBanner(msg, type = 'info') {
+    const b = document.getElementById('banner');
+    b.textContent = msg; b.className = `visible ${type}`;
+  }
+  function hideBanner() { document.getElementById('banner').className = ''; }
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  document.getElementById('snap-filter').addEventListener('change', loadSnapshots);
+  document.getElementById('snap-limit').addEventListener('change', loadSnapshots);
+
+  async function init() {
+    await Promise.all([loadSystem(), loadCameras(), loadSnapshots()]);
+    setInterval(loadSystem,  30_000);
+    setInterval(loadCameras, 60_000);
+  }
+
+  init();
+</script>
+</body>
+</html>

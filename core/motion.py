@@ -27,6 +27,7 @@ async def motion_detection_task(
     camera: CameraConfig,
     streamer: CameraStreamer,
     sse_subscribers: set[asyncio.Queue],
+    motion_stats: dict,
 ) -> None:
     """Subscribe to the camera streamer and broadcast an event when real motion is detected.
 
@@ -100,6 +101,9 @@ async def motion_detection_task(
                             }
                             for sub in list(sse_subscribers):
                                 sub.put_nowait(event)
+
+                            motion_stats[camera.id]["events_total"] += 1
+                            motion_stats[camera.id]["last_at"] = ts
 
                     background = (
                         settings.motion_bg_alpha * frame

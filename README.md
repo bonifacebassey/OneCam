@@ -10,6 +10,7 @@ Home monitoring system built around the **AI Thinker ESP32-CAM**. A lightweight 
 - **Camera controls** — adjust resolution, JPEG quality, brightness, and contrast from the browser
 - **Motion detection** — background task compares frames; saves a snapshot and sends a real-time browser alert when movement is detected
 - **SSE alerts** — browser stays connected via Server-Sent Events; motion badges appear instantly without polling
+- **Admin panel** — system health (CPU, RAM, disk, uptime), camera ping/latency, snapshot browser with bulk delete, and server restart at `/admin`
 - **Remote access ready** — one command with [Cloudflare Tunnel](docs/remote-access.md) makes the dashboard reachable from anywhere, for free
 
 ## Hardware
@@ -158,10 +159,12 @@ OneCam/
 │
 ├── api/
 │   ├── streams.py           Stream, snapshot, camera list, control endpoints
-│   └── events.py            SSE endpoint for real-time motion alerts
+│   ├── events.py            SSE endpoint for real-time motion alerts
+│   └── admin.py             Admin endpoints (system metrics, camera ping, snapshots, restart)
 │
 ├── static/
 │   ├── index.html           Browser dashboard (vanilla JS)
+│   ├── admin.html           Admin panel
 │   └── style.css            Dark theme
 │
 ├── firmware/
