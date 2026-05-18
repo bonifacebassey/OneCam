@@ -4,8 +4,8 @@ Step-by-step instructions for flashing the OneCam sketch to an AI Thinker ESP32-
 
 ## Hardware Required
 
-- **AI Thinker ESP32-CAM** — the black module with OV2640 camera and antenna connector
-- **USB-to-TTL serial adapter** — FTDI FT232RL or CH340G, **must operate at 3.3 V logic**
+- **AI Thinker ESP32-CAM** - the black module with OV2640 camera and antenna connector
+- **USB-to-TTL serial adapter** - FTDI FT232RL or CH340G, **must operate at 3.3 V logic**
   (5 V on TX/RX will permanently damage the ESP32)
 - Dupont jumper wires (female-female)
 - Optional: 10 µF capacitor across the adapter's 3.3 V and GND to stabilise power during flash
@@ -25,11 +25,11 @@ GND              ───────  GPIO0   ← bridge this to GND only duri
 ```
 
 > **Important:** GPIO0 must be pulled LOW (connected to GND) to enter flash mode.
-> Remove the bridge after uploading — leaving it connected prevents the camera from booting.
+> Remove the bridge after uploading - leaving it connected prevents the camera from booting.
 
 ## Arduino IDE Setup
 
-### 1 — Install the ESP32 board package
+### 1 - Install the ESP32 board package
 
 1. Open Arduino IDE
 2. `File → Preferences → Additional boards manager URLs`, add:
@@ -38,11 +38,11 @@ GND              ───────  GPIO0   ← bridge this to GND only duri
    ```
 3. `Tools → Board → Boards Manager` → search **esp32** by Espressif Systems → Install (v2.x)
 
-### 2 — Select the correct board
+### 2 - Select the correct board
 
 `Tools → Board → ESP32 Arduino → AI Thinker ESP32-CAM`
 
-### 3 — Configure upload settings
+### 3 - Configure upload settings
 
 | Setting | Value |
 |---|---|
@@ -91,13 +91,13 @@ Before touching the Python server, confirm the camera streams correctly from a b
 http://192.168.1.101/stream
 ```
 
-You should see the MJPEG stream directly in the browser. If the page loads but the stream is black, try tapping `RESET` again — the OV2640 sometimes needs two power cycles.
+You should see the MJPEG stream directly in the browser. If the page loads but the stream is black, try tapping `RESET` again - the OV2640 sometimes needs two power cycles.
 
 ## Reserve a Static IP
 
 The camera's IP can change across reboots if your router hands out addresses dynamically. Prevent this by adding a **DHCP reservation** in your router:
 
-1. Find the camera's MAC address — many routers show it in the connected devices list once the camera is online
+1. Find the camera's MAC address - many routers show it in the connected devices list once the camera is online
 2. In your router's admin panel, bind that MAC address to a fixed IP (e.g. `192.168.1.101`)
 3. This ensures the IP you put in `cameras.json` never changes
 
@@ -107,7 +107,7 @@ The sketch starts with conservative defaults. You can change them at the top of 
 
 | Parameter | Default | Notes |
 |---|---|---|
-| `frame_size` | `FRAMESIZE_VGA` | 640×480 — best for LAN streaming |
+| `frame_size` | `FRAMESIZE_VGA` | 640×480 - best for LAN streaming |
 | `jpeg_quality` | `12` | 4–63, lower = higher quality / larger frames |
 | `fb_count` | `2` | Double-buffering prevents frame tearing |
 
@@ -116,17 +116,17 @@ The sketch starts with conservative defaults. You can change them at the top of 
 | Name | Resolution | Best for |
 |---|---|---|
 | `FRAMESIZE_QVGA` | 320×240 | Slow networks, many cameras |
-| `FRAMESIZE_VGA` | 640×480 | Default — good balance |
+| `FRAMESIZE_VGA` | 640×480 | Default - good balance |
 | `FRAMESIZE_SVGA` | 800×600 | More detail, ~30% more bandwidth |
 | `FRAMESIZE_XGA` | 1024×768 | High detail, requires good WiFi signal |
-| `FRAMESIZE_UXGA` | 1600×1200 | Max resolution — snapshot mode only, too slow for live stream |
+| `FRAMESIZE_UXGA` | 1600×1200 | Max resolution - snapshot mode only, too slow for live stream |
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `Camera init failed: 0x...` | Bad wiring or power | Check 3.3 V rail; try `CAMERA_FB_IN_DRAM` if no PSRAM detected |
-| `WiFi failed` | Wrong credentials | Double-check SSID/password — they are case-sensitive |
+| `WiFi failed` | Wrong credentials | Double-check SSID/password - they are case-sensitive |
 | Upload stuck at `Connecting...` | GPIO0 not bridged to GND | Bridge GPIO0 → GND before upload |
 | Black stream after boot | OV2640 init issue | Press RESET once more; sometimes needs two cold boots |
 | Stream works directly but not via Python server | Content-Type boundary mismatch | Ensure `PART_BOUNDARY` in sketch is `"frame"` (it is by default) |

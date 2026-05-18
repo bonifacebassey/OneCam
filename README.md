@@ -1,17 +1,17 @@
 # OneCam
 
-Home monitoring system built around the **AI Thinker ESP32-CAM**. A lightweight FastAPI server proxies the camera's MJPEG stream and serves a browser dashboard accessible from any device on your network — and optionally from anywhere in the world via Cloudflare Tunnel.
+Home monitoring system built around the **AI Thinker ESP32-CAM**. A lightweight FastAPI server proxies the camera's MJPEG stream and serves a browser dashboard accessible from any device on your network - and optionally from anywhere in the world via Cloudflare Tunnel.
 
 ## Features
 
-- **Live MJPEG stream** — watch from any browser on the local network, no plugin needed
-- **Multi-camera support** — add as many cameras as you like via `cameras.json`
-- **On-demand snapshots** — grab a JPEG of the current frame with one click
-- **Camera controls** — adjust resolution, JPEG quality, brightness, and contrast from the browser
-- **Motion detection** — background task compares frames; saves a snapshot and sends a real-time browser alert when movement is detected
-- **SSE alerts** — browser stays connected via Server-Sent Events; motion badges appear instantly without polling
-- **Admin panel** — system health (CPU, RAM, disk, uptime), camera ping/latency, snapshot browser with bulk delete, and server restart at `/admin`
-- **Remote access ready** — one command with [Cloudflare Tunnel](docs/remote-access.md) makes the dashboard reachable from anywhere, for free
+- **Live MJPEG stream** - watch from any browser on the local network, no plugin needed
+- **Multi-camera support** - add as many cameras as you like via `cameras.json`
+- **On-demand snapshots** - grab a JPEG of the current frame with one click
+- **Camera controls** - adjust resolution, JPEG quality, brightness, and contrast from the browser
+- **Motion detection** - background task compares frames; saves a snapshot and sends a real-time browser alert when movement is detected
+- **SSE alerts** - browser stays connected via Server-Sent Events; motion badges appear instantly without polling
+- **Admin panel** - system health (CPU, RAM, disk, uptime), camera ping/latency, snapshot browser with bulk delete, and server restart at `/admin`
+- **Remote access ready** - one command with [Cloudflare Tunnel](docs/remote-access.md) makes the dashboard reachable from anywhere, for free
 
 ## Hardware
 
@@ -25,7 +25,7 @@ Wiring and flashing instructions: [docs/firmware.md](docs/firmware.md)
 
 ## Quick Start
 
-### 1 — Flash the camera
+### 1 - Flash the camera
 
 See [docs/firmware.md](docs/firmware.md). After flashing, the Serial Monitor prints:
 
@@ -35,9 +35,9 @@ See [docs/firmware.md](docs/firmware.md). After flashing, the Serial Monitor pri
   Snapshot: http://192.168.1.101/capture
 ```
 
-Note the IP address — you'll need it in the next step.
+Note the IP address - you'll need it in the next step.
 
-### 2 — Configure cameras
+### 2 - Configure cameras
 
 Edit `cameras.json` and replace the IP with the one printed above:
 
@@ -56,7 +56,7 @@ Edit `cameras.json` and replace the IP with the one printed above:
 
 Set a **DHCP reservation** in your router for the camera's MAC address so the IP never changes after a reboot.
 
-### 3 — Install and run
+### 3 - Install and run
 
 ```bash
 uv sync
@@ -64,14 +64,14 @@ uv sync
 uv run uvicorn main:app --host 0.0.0.0 --reload --port 8000
 ```
 
-### 4 — Open the dashboard
+### 4 - Open the dashboard
 
 On the same machine:
 ```
 http://localhost:8000/
 ```
 
-From any phone, tablet, or laptop on the same WiFi — first find your machine's IP:
+From any phone, tablet, or laptop on the same WiFi - first find your machine's IP:
 ```bash
 ip route get 8.8.8.8 | awk '{print $7; exit}'
 # example output: 192.168.1.50
@@ -88,7 +88,7 @@ The browser dashboard auto-discovers cameras from `/api/cameras` and displays th
 
 | Feature | How to use |
 |---|---|
-| Live stream | Loads automatically — MJPEG runs natively in any browser |
+| Live stream | Loads automatically - MJPEG runs natively in any browser |
 | Offline indicator | Appears if the camera drops; **Retry** button reconnects |
 | Snapshot | Click **Snapshot** to open the current frame in a new tab (also saves to `snapshots/`) |
 | Camera controls | Click **Controls** to expand sliders for resolution, quality, brightness, contrast |
@@ -132,7 +132,7 @@ Copy `.env.example` to `.env` and adjust as needed. All settings have sensible d
 
 ## Remote Access
 
-To reach the dashboard from outside your home network — see [docs/remote-access.md](docs/remote-access.md).
+To reach the dashboard from outside your home network - see [docs/remote-access.md](docs/remote-access.md).
 
 Quick test (no account needed):
 ```bash
@@ -148,9 +148,9 @@ Full endpoint documentation: [docs/api.md](docs/api.md)
 
 ```
 OneCam/
-├── main.py                  FastAPI app — lifespan, routers, middleware
+├── main.py                  FastAPI app - lifespan, routers, middleware
 ├── config.py                Settings (pydantic-settings, reads .env)
-├── cameras.json             Camera registry — edit to add/remove cameras
+├── cameras.json             Camera registry - edit to add/remove cameras
 │
 ├── core/
 │   ├── camera_registry.py   CameraConfig model, load_cameras(), get_camera()

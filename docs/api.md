@@ -42,7 +42,7 @@ Streams a continuous MJPEG feed from the camera. Designed to be used as the `src
 <img src="/api/stream/front-door" />
 ```
 
-**Response** — `multipart/x-mixed-replace; boundary=frame`
+**Response** - `multipart/x-mixed-replace; boundary=frame`
 
 The generator closes cleanly when the client disconnects. If the camera is unreachable the generator ends immediately, causing the `<img>` element to fire `onerror` so the dashboard can display the offline overlay.
 
@@ -68,7 +68,7 @@ Fetches a single JPEG frame from the camera.
 |---|---|---|---|
 | `save` | boolean | `false` | If `true`, saves the image to `snapshots/{cam_id}_{timestamp}.jpg` before returning it |
 
-**Response 200** — `image/jpeg`
+**Response 200** - `image/jpeg`
 
 **Errors**
 
@@ -101,7 +101,7 @@ Forwards a parameter change to the camera's `/control` endpoint.
 | Variable | Type | Range | Description |
 |---|---|---|---|
 | `framesize` | int | 0–13 | Frame size (see firmware docs for values) |
-| `quality` | int | 4–63 | JPEG quality — lower = better quality |
+| `quality` | int | 4–63 | JPEG quality - lower = better quality |
 | `brightness` | int | -2 to 2 | Brightness adjustment |
 | `contrast` | int | -2 to 2 | Contrast adjustment |
 | `saturation` | int | -2 to 2 | Saturation adjustment |
@@ -162,7 +162,7 @@ GET /api/snapshots/{filename}
 
 Serves a saved snapshot file.
 
-**Response 200** — `image/jpeg`
+**Response 200** - `image/jpeg`
 
 **Errors**
 
@@ -221,7 +221,7 @@ es.addEventListener("motion", (e) => {
 GET /health
 ```
 
-Liveness probe — useful for monitoring or confirming the server started correctly.
+Liveness probe - useful for monitoring or confirming the server started correctly.
 
 **Response 200**
 ```json
@@ -245,7 +245,7 @@ Redirects to `/ui/` (the browser dashboard).
 GET /ui/
 ```
 
-Serves `static/index.html` — the browser dashboard.
+Serves `static/index.html` - the browser dashboard.
 
 ---
 

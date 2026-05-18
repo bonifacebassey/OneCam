@@ -1,6 +1,6 @@
 # Remote Access
 
-Access your OneCam dashboard from anywhere in the world — your phone on mobile data, a laptop at a coffee shop, or sharing a link with a family member.
+Access your OneCam dashboard from anywhere in the world - your phone on mobile data, a laptop at a coffee shop, or sharing a link with a family member.
 
 This guide uses **Cloudflare Tunnel** (`cloudflared`). It is free, requires no port forwarding, no static IP, and works even if your ISP uses CGNAT (which blocks inbound connections entirely).
 
@@ -22,7 +22,7 @@ ESP32-CAM
 
 ---
 
-## Option A — Quick test (no account needed)
+## Option A - Quick test (no account needed)
 
 This gives you a random public URL that lasts until you stop the process. Good for testing.
 
@@ -35,7 +35,7 @@ chmod +x /usr/local/bin/cloudflared
 # Start the server
 uv run uvicorn main:app --host 0.0.0.0 --port 8000
 
-# In another terminal — create a temporary tunnel
+# In another terminal - create a temporary tunnel
 cloudflared tunnel --url http://localhost:8000
 ```
 
@@ -51,7 +51,7 @@ Open that URL from any device, anywhere.
 
 ---
 
-## Option B — Permanent tunnel with your own domain (free)
+## Option B - Permanent tunnel with your own domain (free)
 
 This gives you a fixed URL like `onecam.yourdomain.com` that works even after reboots.
 
@@ -60,7 +60,7 @@ This gives you a fixed URL like `onecam.yourdomain.com` that works even after re
 - A free [Cloudflare account](https://dash.cloudflare.com/sign-up)
 - A domain added to Cloudflare (even a cheap one from Namecheap/Porkbun works)
 
-### 1 — Install and authenticate
+### 1 - Install and authenticate
 
 ```bash
 # Install cloudflared
@@ -72,7 +72,7 @@ chmod +x /usr/local/bin/cloudflared
 cloudflared tunnel login
 ```
 
-### 2 — Create a named tunnel
+### 2 - Create a named tunnel
 
 ```bash
 cloudflared tunnel create onecam
@@ -80,7 +80,7 @@ cloudflared tunnel create onecam
 
 This creates a tunnel and saves a credentials file at `~/.cloudflared/<tunnel-id>.json`. Note the tunnel ID printed in the output.
 
-### 3 — Create the config file
+### 3 - Create the config file
 
 Create `~/.cloudflared/config.yml`:
 
@@ -96,7 +96,7 @@ ingress:
 
 Replace `<your-tunnel-id>`, `<your-username>`, and `yourdomain.com` accordingly.
 
-### 4 — Point DNS to the tunnel
+### 4 - Point DNS to the tunnel
 
 ```bash
 cloudflared tunnel route dns onecam onecam.yourdomain.com
@@ -104,7 +104,7 @@ cloudflared tunnel route dns onecam onecam.yourdomain.com
 
 This adds a CNAME record in Cloudflare DNS automatically.
 
-### 5 — Run the tunnel
+### 5 - Run the tunnel
 
 ```bash
 cloudflared tunnel run onecam
@@ -112,7 +112,7 @@ cloudflared tunnel run onecam
 
 Your dashboard is now live at `https://onecam.yourdomain.com`.
 
-### 6 — Make it permanent (systemd)
+### 6 - Make it permanent (systemd)
 
 ```bash
 # Install as a systemd service
@@ -130,7 +130,7 @@ The tunnel now starts automatically on boot, even before you log in.
 
 ---
 
-## Option C — Run on a Raspberry Pi
+## Option C - Run on a Raspberry Pi
 
 If you want the Python server to run 24/7 without keeping a laptop on, a Raspberry Pi (any model) works well as a dedicated host.
 
@@ -165,7 +165,7 @@ Combine with cloudflared systemd service (Option B step 6) for a fully autonomou
 
 ## Adding authentication
 
-The Cloudflare dashboard lets you add **Cloudflare Access** — a zero-trust auth gate in front of your tunnel. When enabled, anyone visiting your URL must log in with their Google, GitHub, or email account before reaching the dashboard.
+The Cloudflare dashboard lets you add **Cloudflare Access** - a zero-trust auth gate in front of your tunnel. When enabled, anyone visiting your URL must log in with their Google, GitHub, or email account before reaching the dashboard.
 
 To enable:
 1. Go to Cloudflare dashboard → **Zero Trust** → **Access** → **Applications**
@@ -173,7 +173,7 @@ To enable:
 3. Set the application domain to `onecam.yourdomain.com`
 4. Configure an identity provider (Google, GitHub, etc.) and an access policy (e.g. "allow your email only")
 
-No code changes needed — Cloudflare enforces auth at the edge before traffic reaches your server.
+No code changes needed - Cloudflare enforces auth at the edge before traffic reaches your server.
 
 ---
 
