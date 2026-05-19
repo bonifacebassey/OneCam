@@ -80,7 +80,7 @@
 
     /* Storage warning */
     .storage-warning {
-      display: none; margin-top: 0.75rem;
+      margin-top: 0.75rem;
       background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.4);
       border-radius: 8px; padding: 0.6rem 1rem;
       font-size: 0.82rem; color: var(--accent);
@@ -143,6 +143,14 @@
     .snap-item-ts  { font-size: 0.65rem; color: #ddd; }
     .snap-item-cam { font-size: 0.6rem;  color: var(--muted); }
     .snap-empty { color: var(--muted); font-size: 0.85rem; padding: 2rem 0; text-align: center; }
+    .snap-delete {
+      position: absolute; top: 4px; right: 4px;
+      width: 20px; height: 20px; border-radius: 50%; padding: 0;
+      background: rgba(0,0,0,0.65); border: none; color: #fff;
+      font-size: 0.6rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .snap-item:hover .snap-delete { opacity: 1; }
 
     /* ── Buttons ─────────────────────────────────────────────────────────────── */
     .btn-danger { background: rgba(231,76,60,0.1); border-color: rgba(231,76,60,0.4); color: var(--accent); }
@@ -235,6 +243,13 @@
           <div class="value" id="m-snaps">—</div>
           <div class="sub" id="m-snaps-sub"></div>
         </div>
+        <div class="metric-tile" id="tile-swap">
+          <span class="icon">🔄</span>
+          <div class="label">Swap</div>
+          <div class="value" id="m-swap">—</div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="bar-swap" style="width:0%"></div></div>
+          <div class="sub" id="m-swap-sub"></div>
+        </div>
         <div class="metric-tile" id="tile-load">
           <span class="icon">📊</span>
           <div class="label">Load (1m)</div>
@@ -283,6 +298,7 @@
           <option value="100" selected>100</option>
           <option value="200">200</option>
         </select>
+        <button onclick="loadSnapshots()">Refresh</button>
         <button onclick="deleteSnapshots(null, 7)">Delete &gt; 7 days</button>
         <button class="btn-danger" onclick="deleteSnapshots()">Delete all</button>
       </div>
@@ -349,19 +365,23 @@
     try {
       const d = await fetch('/api/admin/system').then(r => r.json());
       setMetric('m-cpu',  'bar-cpu',  'tile-cpu',  d.cpu_percent,  60, 85);
-      setMetric('m-temp', 'bar-temp', 'tile-temp', d.cpu_temp_c ?? 0, 65, 80, d.cpu_temp_c != null ? '°C' : '');
-      if (d.cpu_temp_c == null) document.getElementById('m-temp').textContent = 'N/A';
+      if (d.cpu_temp_c != null) setMetric('m-temp', 'bar-temp', 'tile-temp', d.cpu_temp_c, 65, 80, '°C');
+      else document.getElementById('m-temp').textContent = 'N/A';
       setMetric('m-ram',  'bar-ram',  'tile-ram',  d.ram_percent,  70, 90);
       document.getElementById('m-ram-sub').textContent = `${d.ram_used_mb} / ${d.ram_total_mb} MB`;
+      setMetric('m-swap', 'bar-swap', 'tile-swap', d.swap_percent, 50, 80);
+      document.getElementById('m-swap-sub').textContent = d.swap_total_mb > 0 ? `${d.swap_used_mb} / ${d.swap_total_mb} MB` : 'No swap';
+      if (d.swap_total_mb === 0) document.getElementById('m-swap').textContent = 'N/A';
       setMetric('m-disk', 'bar-disk', 'tile-disk', d.disk_percent, 75, 90);
       document.getElementById('m-disk-sub').textContent = `${d.disk_used_gb} / ${d.disk_total_gb} GB`;
       document.getElementById('m-snaps').textContent    = d.snapshots_count;
       document.getElementById('m-snaps-sub').textContent = d.snapshots_size_mb + ' MB';
       document.getElementById('m-load').textContent     = d.load_avg_1m;
 
-      const h = Math.floor(d.uptime_seconds / 3600);
-      const m = Math.floor((d.uptime_seconds % 3600) / 60);
-      document.getElementById('uptime').textContent = `up ${h}h ${m}m`;
+      const days = Math.floor(d.uptime_seconds / 86400);
+      const h    = Math.floor((d.uptime_seconds % 86400) / 3600);
+      const m    = Math.floor((d.uptime_seconds % 3600) / 60);
+      document.getElementById('uptime').textContent = days > 0 ? `up ${days}d ${h}h` : `up ${h}h ${m}m`;
 
       // Storage warning
       const warn = document.getElementById('storage-warning');
@@ -396,7 +416,7 @@
         const lat  = c.latency_ms != null ? c.latency_ms + ' ms' : '—';
         const last = c.motion_last_at ? formatTs(c.motion_last_at) : 'Never';
         const preview = c.reachable
-          ? `<img class="cam-preview" src="/api/snapshot/${c.id}?t=${Date.now()}" alt="Preview" onerror="this.outerHTML='<div class=cam-preview-placeholder>No preview</div>'">`
+          ? `<img class="cam-preview" data-cam-id="${c.id}" src="/api/snapshot/${c.id}?t=${Date.now()}" alt="Preview" onerror="this.outerHTML='<div class=cam-preview-placeholder>No preview</div>'">`
           : `<div class="cam-preview-placeholder">Offline</div>`;
         return `
           <div class="cam-card ${cls} fade-in">
@@ -439,6 +459,7 @@
             <div class="snap-item-ts">${f.timestamp ? formatTs(f.timestamp) : ''}</div>
             <div class="snap-item-cam">${f.camera_id || ''}</div>
           </div>
+          <button class="snap-delete" onclick="event.stopPropagation(); deleteSingleSnapshot('${f.filename}', this)" title="Delete">✕</button>
         </div>`).join('');
     } catch {}
   }
@@ -452,6 +473,14 @@
       btn.textContent = cam?.reachable ? `${cam.latency_ms} ms ✓` : 'Offline';
     } catch { btn.textContent = 'Error'; }
     setTimeout(() => { btn.disabled = false; btn.textContent = 'Ping'; }, 3000);
+  }
+
+  async function deleteSingleSnapshot(filename, btn) {
+    if (!confirm(`Delete ${filename}?`)) return;
+    try {
+      const r = await fetch(`/api/admin/snapshots/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+      if (r.ok) { btn.closest('.snap-item').remove(); loadSystem(); }
+    } catch {}
   }
 
   async function deleteSnapshots(camId = null, olderThanDays = null) {
@@ -501,10 +530,17 @@
   document.getElementById('snap-filter').addEventListener('change', loadSnapshots);
   document.getElementById('snap-limit').addEventListener('change', loadSnapshots);
 
+  function refreshThumbnails() {
+    document.querySelectorAll('img.cam-preview[data-cam-id]').forEach(img => {
+      img.src = `/api/snapshot/${img.dataset.camId}?t=${Date.now()}`;
+    });
+  }
+
   async function init() {
     await Promise.all([loadSystem(), loadCameras(), loadSnapshots()]);
-    setInterval(loadSystem,  30_000);
-    setInterval(loadCameras, 60_000);
+    setInterval(loadSystem,        30_000);
+    setInterval(loadCameras,       60_000);
+    setInterval(refreshThumbnails, 30_000);
   }
 
   init();

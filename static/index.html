@@ -146,6 +146,15 @@ function retryStream(camId) {
   img.src = `${img.dataset.streamUrl}?t=${Date.now()}`;
 }
 
+// Reconnect all live streams — called when SSE comes back after a server restart.
+function reconnectLiveStreams() {
+  document.querySelectorAll("img.stream").forEach(img => {
+    const camId = img.id.replace("img-", "");
+    if (document.getElementById(`offline-${camId}`)?.classList.contains("visible")) return;
+    img.src = `${img.dataset.streamUrl}?t=${Date.now()}`;
+  });
+}
+
 // ── Snapshot ──────────────────────────────────────────────────────────────────
 function takeSnapshot(camId) {
   window.open(`/api/snapshot/${camId}?save=true`, "_blank");
@@ -175,9 +184,12 @@ function connectSSE() {
 
   const es = new EventSource("/api/events");
 
+  let _sseConnected = false;
   es.addEventListener("open", () => {
     statusEl.className = "connected";
     labelEl.textContent = "Live";
+    if (_sseConnected) reconnectLiveStreams(); // server came back — refresh streams
+    _sseConnected = true;
   });
 
   es.addEventListener("motion", e => {

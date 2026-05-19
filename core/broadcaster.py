@@ -63,14 +63,15 @@ class CameraStreamer:
                 )
             if self._subscribers:
                 await asyncio.sleep(delay)
-                delay = min(delay * 2, 60.0)
+                delay = min(delay * 2, 15.0)
 
     async def _connect_and_stream(self) -> None:
         buf = bytearray()
-        # connect timeout keeps the retry loop responsive if the camera is down;
-        # read timeout must be None — MJPEG streams pause between frames and a
-        # finite read timeout causes spurious disconnects every ~proxy_timeout seconds.
-        timeout = httpx.Timeout(connect=settings.proxy_timeout, read=None, write=None, pool=None)
+        # connect timeout keeps the retry loop responsive if the camera is down.
+        # read timeout of 10s detects abrupt disconnects (WiFi dropout, power loss) where
+        # TCP stays "open" but no data arrives — the ESP32 streams multiple frames per
+        # second so 10s of silence means the camera is genuinely gone.
+        timeout = httpx.Timeout(connect=settings.proxy_timeout, read=10.0, write=None, pool=None)
         async with self._client.stream("GET", self.camera.stream_url, timeout=timeout) as resp:
             async for chunk in resp.aiter_bytes(chunk_size=settings.stream_chunk_size):
                 buf += chunk  # in-place extend — no copy of existing data

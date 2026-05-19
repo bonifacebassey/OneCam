@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 import psutil
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from config import settings
 
@@ -37,6 +37,7 @@ async def system_metrics():
     snapshot_size_mb = round(sum(f.stat().st_size for f in snapshot_files) / 1_048_576, 2)
 
     ram = psutil.virtual_memory()
+    swap = psutil.swap_memory()
     disk = psutil.disk_usage("/")
 
     return {
@@ -45,6 +46,9 @@ async def system_metrics():
         "ram_used_mb": round(ram.used / 1_048_576),
         "ram_total_mb": round(ram.total / 1_048_576),
         "ram_percent": ram.percent,
+        "swap_used_mb": round(swap.used / 1_048_576),
+        "swap_total_mb": round(swap.total / 1_048_576),
+        "swap_percent": swap.percent,
         "disk_used_gb": round(disk.used / 1_073_741_824, 1),
         "disk_total_gb": round(disk.total / 1_073_741_824, 1),
         "disk_percent": disk.percent,
@@ -143,6 +147,17 @@ async def delete_snapshots(
         f.unlink()
         deleted += 1
     return {"deleted": deleted}
+
+
+@router.delete("/snapshots/{filename}")
+async def delete_snapshot(filename: str):
+    if "/" in filename or ".." in filename or not filename.endswith(".jpg"):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    f = Path(settings.snapshots_dir) / filename
+    if not f.exists():
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    f.unlink()
+    return {"deleted": 1}
 
 
 @router.post("/restart")
