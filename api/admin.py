@@ -68,14 +68,23 @@ async def cameras_status(request: Request):
 
     async def ping(cam):
         start = time.monotonic()
-        try:
-            resp = await api_client.get(cam.capture_url, timeout=3.0)
-            resp.raise_for_status()
-            latency_ms = round((time.monotonic() - start) * 1000)
-            reachable = True
-        except Exception:
-            latency_ms = None
-            reachable = False
+
+        async def _capture():
+            r = await api_client.get(cam.capture_url, timeout=3.0)
+            r.raise_for_status()
+            return round((time.monotonic() - start) * 1000)
+
+        async def _rssi():
+            r = await api_client.get(cam.wifi_url, timeout=2.0)
+            return r.json().get("rssi")
+
+        capture_result, rssi_result = await asyncio.gather(
+            _capture(), _rssi(), return_exceptions=True
+        )
+
+        reachable  = not isinstance(capture_result, Exception)
+        latency_ms = capture_result if reachable else None
+        rssi       = rssi_result if not isinstance(rssi_result, Exception) else None
 
         streamer = streamers.get(cam.id)
         stats = motion_stats.get(cam.id, {})
@@ -85,6 +94,7 @@ async def cameras_status(request: Request):
             "ip": cam.ip,
             "reachable": reachable,
             "latency_ms": latency_ms,
+            "rssi": rssi,
             "subscribers": len(streamer._subscribers) if streamer else 0,
             "motion_events_total": stats.get("events_total", 0),
             "motion_last_at": stats.get("last_at"),
@@ -100,10 +110,12 @@ async def list_snapshots(
     limit: int = Query(default=100, ge=1, le=1000),
 ):
     snapshots_dir = Path(settings.snapshots_dir)
-    files = sorted(snapshots_dir.glob("*.jpg"), key=lambda f: f.stat().st_mtime, reverse=True)
+    all_files = sorted(snapshots_dir.glob("*.jpg"), key=lambda f: f.stat().st_mtime, reverse=True)
+    total_count = len(all_files)
+    total_size  = sum(f.stat().st_size for f in all_files)
 
     items = []
-    for f in files:
+    for f in all_files:
         m = _SNAPSHOT_RE.match(f.name)
         cam_id = m.group(1) if m else None
         ts = m.group(2) if m else None
@@ -121,9 +133,8 @@ async def list_snapshots(
         if len(items) >= limit:
             break
 
-    total_size = sum(f.stat().st_size for f in snapshots_dir.glob("*.jpg"))
     return {
-        "total": len(list(snapshots_dir.glob("*.jpg"))),
+        "total": total_count,
         "size_mb": round(total_size / 1_048_576, 2),
         "files": items,
     }

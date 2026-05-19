@@ -2,10 +2,11 @@
  * OneCam — ESP32-CAM Firmware
  * Board: AI Thinker ESP32-CAM (OV2640)
  *
- * Exposes three HTTP endpoints:
- *   GET /stream   — continuous MJPEG stream (boundary=frame)
- *   GET /capture  — single JPEG snapshot
- *   GET /control?var=<name>&val=<value> — adjust camera parameters
+ * Exposes four HTTP endpoints:
+ *   GET /stream              — continuous MJPEG stream (boundary=frame)
+ *   GET /capture             — single JPEG snapshot
+ *   GET /control?var=&val=  — adjust camera parameters
+ *   GET /wifi                — WiFi signal strength {"rssi":<dBm>}
  *
  * Flash instructions:
  *   1. Arduino IDE → Tools → Board → ESP32 Arduino → AI Thinker ESP32-CAM
@@ -157,24 +158,35 @@ static esp_err_t control_handler(httpd_req_t* req) {
     return ESP_OK;
 }
 
+// ── /wifi handler ─────────────────────────────────────────────────────────────
+static esp_err_t wifi_handler(httpd_req_t* req) {
+    char buf[32];
+    int len = snprintf(buf, sizeof(buf), "{\"rssi\":%d}", WiFi.RSSI());
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    return httpd_resp_send(req, buf, len);
+}
+
 // ── Start HTTP servers ────────────────────────────────────────────────────────
 // Two separate httpd instances so the blocking stream loop (port 81) never
 // prevents capture or control requests (port 80) from being served.
 static void start_camera_server() {
     httpd_uri_t capture_uri = { "/capture", HTTP_GET, capture_handler, NULL };
     httpd_uri_t control_uri = { "/control", HTTP_GET, control_handler, NULL };
+    httpd_uri_t wifi_uri    = { "/wifi",    HTTP_GET, wifi_handler,    NULL };
     httpd_uri_t stream_uri  = { "/stream",  HTTP_GET, stream_handler,  NULL };
 
     // API server — port 80
     httpd_config_t api_cfg = HTTPD_DEFAULT_CONFIG();
     api_cfg.server_port      = 80;
     api_cfg.ctrl_port        = 32768;
-    api_cfg.max_uri_handlers = 4;
+    api_cfg.max_uri_handlers = 8;
 
     httpd_handle_t api_server = NULL;
     if (httpd_start(&api_server, &api_cfg) == ESP_OK) {
         httpd_register_uri_handler(api_server, &capture_uri);
         httpd_register_uri_handler(api_server, &control_uri);
+        httpd_register_uri_handler(api_server, &wifi_uri);
         Serial.println("API server started on port 80");
     }
 

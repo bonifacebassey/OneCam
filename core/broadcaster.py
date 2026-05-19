@@ -26,6 +26,7 @@ class CameraStreamer:
         self._client = http_client
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
+        self._buf = bytearray()
 
     # ── Subscription ───────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ class CameraStreamer:
                 delay = min(delay * 2, 15.0)
 
     async def _connect_and_stream(self) -> None:
-        buf = bytearray()
+        self._buf.clear()
         # connect timeout keeps the retry loop responsive if the camera is down.
         # read timeout of 10s detects abrupt disconnects (WiFi dropout, power loss) where
         # TCP stays "open" but no data arrives — the ESP32 streams multiple frames per
@@ -74,11 +75,12 @@ class CameraStreamer:
         timeout = httpx.Timeout(connect=settings.proxy_timeout, read=10.0, write=None, pool=None)
         async with self._client.stream("GET", self.camera.stream_url, timeout=timeout) as resp:
             async for chunk in resp.aiter_bytes(chunk_size=settings.stream_chunk_size):
-                buf += chunk  # in-place extend — no copy of existing data
-                self._parse_and_broadcast(buf)
+                self._buf += chunk
+                self._parse_and_broadcast()
 
-    def _parse_and_broadcast(self, buf: bytearray) -> None:
+    def _parse_and_broadcast(self) -> None:
         """Extract complete JPEG frames from the raw MJPEG buffer and broadcast them."""
+        buf = self._buf
         while True:
             start = buf.find(_BOUNDARY)
             if start == -1:
@@ -104,7 +106,7 @@ class CameraStreamer:
             del buf[:next_start]  # in-place trim — no reallocation
 
         if len(buf) > 200_000:  # drop corrupted / oversized buffer
-            del buf[:]
+            buf.clear()
 
     def _push(self, jpeg: bytes) -> None:
         for q in list(self._subscribers):

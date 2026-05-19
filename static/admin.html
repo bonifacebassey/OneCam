@@ -113,6 +113,7 @@
     .cam-badge.online  { background: rgba(46,204,113,0.15); color: var(--green); }
     .cam-badge.offline { background: rgba(231,76,60,0.15);  color: var(--accent); }
 
+
     /* Camera preview thumbnail */
     .cam-preview {
       width: 100%; aspect-ratio: 4/3; object-fit: cover;
@@ -428,11 +429,12 @@
             ${preview}
             <div class="cam-body">
               <div class="cam-stats">
-                <span class="cam-stat-label">IP</span>         <span class="cam-stat-value">${c.ip}</span>
-                <span class="cam-stat-label">Latency</span>    <span class="cam-stat-value">${lat}</span>
-                <span class="cam-stat-label">Viewers</span>    <span class="cam-stat-value">${c.subscribers}</span>
+                <span class="cam-stat-label">IP</span>            <span class="cam-stat-value">${c.ip}</span>
+                <span class="cam-stat-label">Latency</span>       <span class="cam-stat-value">${lat}</span>
+                <span class="cam-stat-label">WiFi signal</span>   <span class="cam-stat-value">${rssiWidget(c.rssi)}</span>
+                <span class="cam-stat-label">Viewers</span>       <span class="cam-stat-value">${c.subscribers}</span>
                 <span class="cam-stat-label">Motion events</span> <span class="cam-stat-value">${c.motion_events_total}</span>
-                <span class="cam-stat-label">Last motion</span><span class="cam-stat-value">${last}</span>
+                <span class="cam-stat-label">Last motion</span>   <span class="cam-stat-value">${last}</span>
               </div>
               <button onclick="pingCamera('${c.id}', this)">Ping</button>
             </div>
@@ -467,11 +469,11 @@
   // ── Actions ──────────────────────────────────────────────────────────────────
   async function pingCamera(camId, btn) {
     btn.disabled = true; btn.textContent = '…';
+    const start = Date.now();
     try {
-      const cams = await fetch('/api/admin/cameras/status').then(r => r.json());
-      const cam = cams.find(c => c.id === camId);
-      btn.textContent = cam?.reachable ? `${cam.latency_ms} ms ✓` : 'Offline';
-    } catch { btn.textContent = 'Error'; }
+      const r = await fetch(`/api/snapshot/${camId}?t=${start}`);
+      btn.textContent = r.ok ? `${Date.now() - start} ms ✓` : 'Offline';
+    } catch { btn.textContent = 'Offline'; }
     setTimeout(() => { btn.disabled = false; btn.textContent = 'Ping'; }, 3000);
   }
 
@@ -512,6 +514,18 @@
         }
       } catch {}
     }, 2000);
+  }
+
+  // ── WiFi signal ──────────────────────────────────────────────────────────────
+  function rssiWidget(rssi) {
+    if (rssi == null) return '<span style="color:var(--muted)">—</span>';
+    const [label, color] =
+      rssi >= -50 ? ['Excellent', 'var(--green)']  :
+      rssi >= -60 ? ['Good',      'var(--green)']  :
+      rssi >= -70 ? ['Fair',      'var(--yellow)'] :
+      rssi >= -80 ? ['Weak',      '#e67e22']       :
+                    ['Poor',      'var(--accent)'];
+    return `<span style="color:${color}">${label}</span> <span style="color:var(--muted)">${rssi} dBm</span>`;
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────

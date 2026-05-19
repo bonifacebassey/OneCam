@@ -27,6 +27,11 @@ class CameraConfig(BaseModel):
     def control_url(self) -> str:
         return f"http://{self.ip}/control"
 
+    @computed_field
+    @property
+    def wifi_url(self) -> str:
+        return f"http://{self.ip}/wifi"
+
 
 def load_cameras(path: str) -> dict[str, "CameraConfig"]:
     with open(path) as f:
