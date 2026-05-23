@@ -30,6 +30,17 @@
 #include "esp_timer.h"
 #include <WiFi.h>
 
+// ── Debug logging ─────────────────────────────────────────────────────────────
+// Set DEBUG to true before reflashing to enable serial output.
+#define DEBUG false
+#if DEBUG
+  #define LOG(msg)  Serial.println(msg)
+  #define LOGF(...) Serial.printf(__VA_ARGS__)
+#else
+  #define LOG(msg)
+  #define LOGF(...)
+#endif
+
 // ── WiFi credentials ─────────────────────────────────────────────────────────
 #define WIFI_SSID "YOUR_SSID_HERE"
 #define WIFI_PASS "YOUR_PASSWORD_HERE"
@@ -81,7 +92,7 @@ static esp_err_t stream_handler(httpd_req_t* req) {
     while (true) {
         fb = esp_camera_fb_get();
         if (!fb) {
-            Serial.println("Frame capture failed");
+            LOG("Frame capture failed");
             res = ESP_FAIL;
             break;
         }
@@ -187,7 +198,7 @@ static void start_camera_server() {
         httpd_register_uri_handler(api_server, &capture_uri);
         httpd_register_uri_handler(api_server, &control_uri);
         httpd_register_uri_handler(api_server, &wifi_uri);
-        Serial.println("API server started on port 80");
+        LOG("API server started on port 80");
     }
 
     // Stream server — port 81 (stream handler blocks indefinitely; isolated here)
@@ -199,7 +210,7 @@ static void start_camera_server() {
     httpd_handle_t stream_server = NULL;
     if (httpd_start(&stream_server, &stream_cfg) == ESP_OK) {
         httpd_register_uri_handler(stream_server, &stream_uri);
-        Serial.println("Stream server started on port 81");
+        LOG("Stream server started on port 81");
     }
 }
 
@@ -237,7 +248,7 @@ void setup() {
 
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
-        Serial.printf("Camera init failed: 0x%x — check wiring and reset\n", err);
+        LOGF("Camera init failed: 0x%x — check wiring and reset\n", err);
         return;
     }
 
@@ -255,23 +266,22 @@ void setup() {
     // Connect to WiFi
     if (STATIC_IP) {
         if (!WiFi.config(local_ip, gateway, subnet, dns)) {
-            Serial.println("Static IP configuration failed");
+            LOG("Static IP configuration failed");
         }
     }
 
     WiFi.begin(WIFI_SSID, WIFI_PASS);
-    Serial.print("Connecting to WiFi");
-    int retries = 0;
-    while (WiFi.status() != WL_CONNECTED && retries < 30) {
+    LOGF("Connecting to WiFi");
+    unsigned long deadline = millis() + 30000;
+    while (WiFi.status() != WL_CONNECTED && millis() < deadline) {
         delay(500);
-        Serial.print(".");
-        retries++;
+        LOGF(".");
     }
-    Serial.println();
+    LOG("");
 
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("WiFi failed — check credentials and reset");
-        return;
+        LOG("WiFi failed on boot -- rebooting");
+        ESP.restart();
     }
 
     // Disable modem sleep — keeps the WiFi radio always on, eliminating
@@ -279,12 +289,12 @@ void setup() {
     WiFi.setSleep(false);
     WiFi.setTxPower(WIFI_POWER_19_5dBm);  // max TX power for best signal
 
-    Serial.println("\n=== OneCam ready ===");
-    Serial.printf("  Stream:   http://%s:81/stream\n", WiFi.localIP().toString().c_str());
-    Serial.printf("  Snapshot: http://%s/capture\n",   WiFi.localIP().toString().c_str());
-    Serial.printf("  Control:  http://%s/control?var=framesize&val=8\n",
-                  WiFi.localIP().toString().c_str());
-    Serial.println("Add this IP to cameras.json in the OneCam Python project.");
+    LOG("\n=== OneCam ready ===");
+    LOGF("  Stream:   http://%s:81/stream\n", WiFi.localIP().toString().c_str());
+    LOGF("  Snapshot: http://%s/capture\n",   WiFi.localIP().toString().c_str());
+    LOGF("  Control:  http://%s/control?var=framesize&val=8\n",
+         WiFi.localIP().toString().c_str());
+    LOG("Add this IP to cameras.json in the OneCam Python project.");
 
     start_camera_server();
 }
@@ -293,25 +303,19 @@ void setup() {
 void checkWiFi() {
     if (WiFi.status() == WL_CONNECTED) return;
 
-    Serial.println("WiFi lost -- reconnecting…");
+    LOG("WiFi lost -- reconnecting...");
     WiFi.disconnect();
     WiFi.begin(WIFI_SSID, WIFI_PASS);
 
-    int retries = 0;
-    while (WiFi.status() != WL_CONNECTED && retries < 20) {
+    while (WiFi.status() != WL_CONNECTED) {
         delay(500);
-        Serial.print(".");
-        retries++;
+        LOGF(".");
     }
-    Serial.println();
+    LOG("");
 
-    if (WiFi.status() == WL_CONNECTED) {
-        WiFi.setSleep(false);
-        WiFi.setTxPower(WIFI_POWER_19_5dBm);
-        Serial.printf("Reconnected — IP: %s\n", WiFi.localIP().toString().c_str());
-    } else {
-        Serial.println("Reconnect failed — will retry in 10s");
-    }
+    WiFi.setSleep(false);
+    WiFi.setTxPower(WIFI_POWER_19_5dBm);
+    LOGF("Reconnected -- IP: %s\n", WiFi.localIP().toString().c_str());
 }
 
 // ── loop ──────────────────────────────────────────────────────────────────────
