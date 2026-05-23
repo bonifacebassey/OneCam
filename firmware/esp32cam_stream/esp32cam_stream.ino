@@ -289,7 +289,33 @@ void setup() {
     start_camera_server();
 }
 
+// ── WiFi watchdog ─────────────────────────────────────────────────────────────
+void checkWiFi() {
+    if (WiFi.status() == WL_CONNECTED) return;
+
+    Serial.println("WiFi lost -- reconnecting…");
+    WiFi.disconnect();
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+
+    int retries = 0;
+    while (WiFi.status() != WL_CONNECTED && retries < 20) {
+        delay(500);
+        Serial.print(".");
+        retries++;
+    }
+    Serial.println();
+
+    if (WiFi.status() == WL_CONNECTED) {
+        WiFi.setSleep(false);
+        WiFi.setTxPower(WIFI_POWER_19_5dBm);
+        Serial.printf("Reconnected — IP: %s\n", WiFi.localIP().toString().c_str());
+    } else {
+        Serial.println("Reconnect failed — will retry in 10s");
+    }
+}
+
 // ── loop ──────────────────────────────────────────────────────────────────────
 void loop() {
-    delay(10000);  // Nothing to do — HTTP server runs in its own FreeRTOS task
+    checkWiFi();
+    delay(10000);
 }
