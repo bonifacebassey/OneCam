@@ -1,6 +1,8 @@
 # OneCam
 
-Home monitoring system built around the **AI Thinker ESP32-CAM**. A lightweight FastAPI server proxies the camera's MJPEG stream and serves a browser dashboard accessible from any device on your network - and optionally from anywhere in the world via Cloudflare Tunnel.
+Home monitoring system for ESP32 camera modules. A lightweight FastAPI server proxies the camera's MJPEG stream and serves a browser dashboard accessible from any device on your network - and optionally from anywhere in the world via Cloudflare Tunnel.
+
+Two camera boards are supported out of the box: the classic **AI Thinker ESP32-CAM** (OV2640) and the **DFRobot DFR1154 ESP32-S3 AI Camera** (OV3660 with IR illumination, ambient light sensor, and PDM microphone). Both speak the same HTTP API, so the Python side doesn't care which board you mix in.
 
 ## Features
 
@@ -15,13 +17,25 @@ Home monitoring system built around the **AI Thinker ESP32-CAM**. A lightweight 
 
 ## Hardware
 
+Pick either board (or mix them — the server treats them identically):
+
+**AI Thinker ESP32-CAM**
+
 | Part | Notes |
 |---|---|
 | AI Thinker ESP32-CAM | OV2640 camera module, built-in PSRAM |
 | USB-to-TTL adapter (FTDI / CH340) | 3.3 V logic, for flashing only |
 | Micro-USB or dupont wires | Power + serial connection |
 
-Wiring and flashing instructions: [docs/firmware.md](docs/firmware.md)
+**DFRobot DFR1154 ESP32-S3 AI Camera Module**
+
+| Part | Notes |
+|---|---|
+| DFR1154 module | ESP32-S3R8, OV3660 2 MP 160° FOV, native USB-C |
+| USB-C cable | Power + flashing (no external adapter needed) |
+| `DFRobot_LTR308` Arduino library | Required for the ambient light sensor (Library Manager) |
+
+The DFR1154 sketch additionally drives the onboard IR LED (auto-toggled at dusk via the light sensor), exposes a PDM-mic sound-level endpoint, and uses the status LED as a heartbeat. See [docs/firmware.md](docs/firmware.md) for wiring and flashing instructions for both boards.
 
 ## Quick Start
 
@@ -96,16 +110,18 @@ The browser dashboard auto-discovers cameras from `/api/cameras` and displays th
 
 ## Adding more cameras
 
-1. Flash another ESP32-CAM with the same sketch (just change the WiFi credentials if needed)
+1. Flash another board with the appropriate sketch:
+   - AI Thinker ESP32-CAM → `firmware/esp32cam_stream/`
+   - DFRobot DFR1154 → `firmware/dfr1154_stream/`
 2. Note the new IP from Serial Monitor
-3. Add an entry to `cameras.json`:
+3. Add an entry to `cameras.json` (both sketches split API on port 80 and stream on port 81, so set `stream_port: 81` for either board):
 
 ```json
 {
   "cameras": [
-    { "id": "front-door", "label": "Front Door",  "ip": "192.168.1.101", "enabled": true },
-    { "id": "backyard",   "label": "Backyard",     "ip": "192.168.1.102", "enabled": true },
-    { "id": "garage",     "label": "Garage",       "ip": "192.168.1.103", "enabled": false }
+    { "id": "front-door", "label": "Front Door", "ip": "192.168.1.101", "stream_port": 81, "enabled": true },
+    { "id": "backyard",   "label": "Backyard",   "ip": "192.168.1.102", "stream_port": 81, "enabled": true },
+    { "id": "garage",     "label": "Garage",     "ip": "192.168.1.103", "stream_port": 81, "enabled": false }
   ]
 }
 ```
@@ -168,8 +184,10 @@ OneCam/
 │   └── style.css            Dark theme
 │
 ├── firmware/
-│   └── esp32cam_stream/
-│       └── esp32cam_stream.ino   Arduino sketch for AI Thinker ESP32-CAM
+│   ├── esp32cam_stream/
+│   │   └── esp32cam_stream.ino   Arduino sketch for AI Thinker ESP32-CAM
+│   └── dfr1154_stream/
+│       └── dfr1154_stream.ino    Arduino sketch for DFRobot DFR1154 (ESP32-S3 + OV3660 + IR + mic)
 │
 ├── snapshots/               Auto-saved motion snapshots (gitignored)
 ├── tests/                   pytest test suite

@@ -110,6 +110,11 @@ Forwards a parameter change to the camera's `/control` endpoint.
 | `awb` | int | 0 or 1 | Auto white balance |
 | `agc` | int | 0 or 1 | Auto gain control |
 | `aec` | int | 0 or 1 | Auto exposure control |
+| `ir` | int | 0, 1, 2 | **DFR1154 only** - IR LED off / on / auto-from-light-sensor |
+| `ir_brightness` | int | 0–255 | **DFR1154 only** - PWM duty for the IR LED |
+
+The Python endpoint forwards any `variable` to the camera unchanged, so board-specific
+variables work transparently — they just 503 if the camera doesn't recognise them.
 
 **Response 200**
 ```json
